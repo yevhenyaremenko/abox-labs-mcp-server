@@ -68,30 +68,29 @@ tests/                  # Generated tests
    # Edit it to implement your tool logic
    ```
 
-### Option 2: Docker-Only Development (no local Python/uv required)
+### Option 2: Docker (Makefile)
 
-1. **Build Docker Image**:
+1. **Login to GHCR** (one-time, requires a PAT with `write:packages` scope):
    ```bash
-   kmcp build --verbose
+   export CR_PAT=<your-github-pat>
+   make login
    ```
 
-2. **Run in Container**:
+2. **Build Docker Image**:
    ```bash
-   docker run -i abox-labs-mcp-server:latest
+   make build              # tags as ghcr.io/yevhenyaremenko/abox-labs-mcp-server:latest
+   make build TAG=1.2.3    # custom tag
    ```
 
-3. **Deploy to Kubernetes**:
+3. **Push to GHCR**:
    ```bash
-   kmcp deploy mcp --apply
+   make push              # pushes :latest
+   make push TAG=1.2.3    # pushes a specific tag
    ```
 
-4. **Add New Tools**:
+4. **Run in Container**:
    ```bash
-   # Create a new tool
-   kmcp add-tool weather
-   
-   # Edit the tool file, then rebuild
-   kmcp build
+   docker run -i ghcr.io/yevhenyaremenko/abox-labs-mcp-server:latest
    ```
 
 ## HTTP Transport Mode
@@ -203,11 +202,14 @@ uv run mypy .
 ### Docker
 
 ```bash
-# Build image (handles lockfile automatically)
-kmcp build
+make build    # build image locally
+make push     # push to ghcr.io/yevhenyaremenko/abox-labs-mcp-server
+```
 
-# Run container
-docker run -i abox-labs-mcp-server:latest
+Override the tag with `TAG=`:
+
+```bash
+make build TAG=1.2.3 && make push TAG=1.2.3
 ```
 
 ### Kubernetes
@@ -219,3 +221,23 @@ kmcp deploy mcp --apply
 # Check deployment status
 kubectl get mcpserver abox-labs-mcp-server
 ```
+
+## CI/CD
+
+The repository ships a GitHub Actions workflow (`.github/workflows/docker-build-push.yml`) that builds and publishes the Docker image to the GitHub Container Registry automatically.
+
+### Triggers
+
+| Event | Tags produced |
+|---|---|
+| Push `v1.2.3` tag | `1.2.3`, `1.2`, `1`, `latest` |
+| Push to `main` | `main`, `sha-<short-sha>` |
+
+### Cutting a release
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The workflow picks up the tag, builds the image, and publishes it to `ghcr.io/yevhenyaremenko/abox-labs-mcp-server` using the automatic `GITHUB_TOKEN` — no secrets configuration required.
