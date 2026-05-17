@@ -13,6 +13,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from .utils import load_config
 
@@ -41,6 +43,11 @@ class DynamicMCPServer:
         # Update global FastMCP instance
         mcp = FastMCP(name=self.name)
         self.mcp = mcp
+
+        # Register health endpoint for Kubernetes probes
+        @self.mcp.custom_route("/health", methods=["GET"])
+        async def health(request: Request) -> JSONResponse:
+            return JSONResponse({"status": "ok"})
 
         # Track loaded tools
         self.loaded_tools: list[str] = []
