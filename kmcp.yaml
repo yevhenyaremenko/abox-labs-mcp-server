@@ -1,0 +1,21 @@
+name: abox-labs-mcp-server
+framework: fastmcp-python
+version: 0.1.0
+description: MCP server built with fastmcp-python
+secrets:
+    local:
+        enabled: false
+        provider: env
+        file: .env.local
+    production:
+        enabled: false
+        provider: kubernetes
+        secretName: abox-labs-mcp-server-secrets-production
+        namespace: default
+    staging:
+        enabled: false
+        provider: kubernetes
+        secretName: abox-labs-mcp-server-secrets-staging
+        namespace: default
+created_at: 2026-05-17T15:00:32.946321+02:00
+updated_at: 2026-05-17T15:00:33.008483+02:00
