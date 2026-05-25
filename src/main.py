@@ -30,6 +30,47 @@ sys.path.insert(0, str(Path(__file__).parent))
 from core.server import DynamicMCPServer  # noqa: E402
 
 
+def _setup_tracing() -> None:
+    """Initialise Phoenix / OpenTelemetry tracing if a collector endpoint is configured.
+
+    Reads:
+      PHOENIX_COLLECTOR_ENDPOINT – OTLP gRPC/HTTP endpoint of the Phoenix collector
+                                    (e.g. http://localhost:6006 for a local instance,
+                                     or https://app.phoenix.arize.com for Arize Cloud).
+      PHOENIX_PROJECT_NAME       – logical project name shown in the Phoenix UI
+                                    (default: "abox-labs-mcp-server").
+      PHOENIX_API_KEY            – required only for Arize Cloud; omit for local Phoenix.
+
+    If PHOENIX_COLLECTOR_ENDPOINT is not set the function returns silently so that
+    the server still works without any tracing infrastructure.
+    """
+    endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT")
+    if not endpoint:
+        logging.getLogger(__name__).info(
+            "PHOENIX_COLLECTOR_ENDPOINT not set – tracing disabled"
+        )
+        return
+
+    project_name = os.getenv("PHOENIX_PROJECT_NAME", "abox-labs-mcp-server")
+
+    try:
+        from phoenix.otel import register  # type: ignore[import-untyped]
+
+        register(
+            project_name=project_name,
+            auto_instrument=True,
+        )
+        logging.getLogger(__name__).info(
+            "Phoenix tracing enabled → endpoint=%s project=%s",
+            endpoint,
+            project_name,
+        )
+    except Exception as exc:  # pragma: no cover
+        logging.getLogger(__name__).warning(
+            "Failed to initialise Phoenix tracing: %s", exc
+        )
+
+
 def main() -> None:
     """Main entry point for the MCP server."""
     # Parse command line arguments
@@ -65,6 +106,10 @@ def main() -> None:
             logging.StreamHandler(sys.stderr)
         ]
     )
+
+    # Initialise Phoenix tracing before the server starts so that every MCP
+    # call is captured from the very first request.
+    _setup_tracing()
 
     try:
         # Create server with dynamic tool loading
